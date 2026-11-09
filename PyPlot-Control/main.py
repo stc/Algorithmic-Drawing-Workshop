@@ -134,16 +134,16 @@ class AutoPen():
         self.send_gcode(f"G00 X{x} Y{y}")
 
     def move_xy_variable_speed(self,x:float,y:float,speed:float=None,update_current_speed:bool=True) -> None:
-        if(not (speed is None) and speed != self.current_speed):
-            self.set_speed(speed)
+        # Include a changed feed rate on the movement itself.  This avoids
+        # relying on the controller retaining a standalone F command between
+        # the speed update and the move.
+        command = f"G01"
+        if not (speed is None) and speed != self.current_speed:
+            command += f" F{speed}"
+            if update_current_speed:
+                self.current_speed = speed
 
-            if(not update_current_speed):
-                #return to previous current speed after movement 
-                self.set_speed(self.current_speed) 
-            else:
-                self.current_speed = speed 
-
-        self.send_gcode(f"G01 X{x} Y{y}")
+        self.send_gcode(f"{command} X{x} Y{y}")
         
 
     def _set_scale_to_mm(self) -> None:
