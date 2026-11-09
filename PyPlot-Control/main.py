@@ -1,7 +1,9 @@
 import sys
 import threading
+import os
 import serial
 import subprocess
+import shutil
 import re
 from tqdm import tqdm 
 
@@ -160,8 +162,25 @@ def convert_svg_to_gcode_vpype(path_input_file: str, path_output_file: str,
     usage example:
         convert_svg_to_gcode_vpype("./input.svg","./output.gcode")
     """
+    # When the venv is not activated, its console scripts may not be on PATH.
+    # Prefer PATH for normal installs, then look beside the Python interpreter
+    # that is running this application.
+    vpype = shutil.which("vpype")
+    if vpype is None:
+        interpreter_dir = os.path.dirname(sys.executable)
+        candidate = os.path.join(interpreter_dir, "vpype")
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            vpype = candidate
+    if vpype is None:
+        raise RuntimeError(
+            "vpype is not installed in the active Python environment; "
+            "run 'python -m pip install -r requirements.txt'"
+        )
+
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                               "vpype-settings.toml")
     command = [
-        "vpype", "--config", "vpype-settings.toml", "read", path_input_file,
+        vpype, "--config", config_path, "read", path_input_file,
     ]
 
     if profile == "idrawv2":

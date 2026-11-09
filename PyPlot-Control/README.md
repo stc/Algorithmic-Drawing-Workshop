@@ -9,11 +9,18 @@ A Flask-based web interface to control an iDraw H A0 or Bachin Draw pen plotter.
 ## Quick start
 
 ```bash
-pip install -r requirements.txt
+cd PyPlot-Control
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
 python app.py [port]
 ```
 
-Default port is `5001`. Open `http://127.0.0.1:5001` in a browser.
+The virtual environment supplies the `python` command after activation. If you
+do not use a virtual environment, run `python3 app.py [port]` instead.
+
+The default port is `3000`. Open `http://127.0.0.1:3000` in a browser, or use
+the Raspberry Pi's LAN address from another device.
 
 ## Features
 
