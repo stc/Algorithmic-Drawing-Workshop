@@ -19,6 +19,7 @@ BED_HEIGHT_MM = 1000.0
 PEN_DOWN_HEIGHT = 9.0
 DEFAULT_PEN_UP_SPEED = 2000.0
 DEFAULT_PEN_DOWN_SPEED = 1000.0
+MAX_SPEED = 5000.0
 
 pen = None
 pen_lock = threading.RLock()
@@ -91,7 +92,7 @@ def connect():
     device = (data.get("device") or "").strip() or None
     try:
         pen_up_speed = clamp(
-            data.get("pen_up_speed", DEFAULT_PEN_UP_SPEED), 50, 2500
+            data.get("pen_up_speed", DEFAULT_PEN_UP_SPEED), 50, MAX_SPEED
         )
         new_pen = AutoPen(device_location=device, default_speed=pen_up_speed)
     except Exception as exc:
@@ -137,7 +138,7 @@ def draw():
                 DEFAULT_PEN_DOWN_SPEED if pen_down else DEFAULT_PEN_UP_SPEED,
             ),
             50,
-            2500,
+            MAX_SPEED,
         )
     except (KeyError, TypeError, ValueError):
         return error("x and y must be numeric")
