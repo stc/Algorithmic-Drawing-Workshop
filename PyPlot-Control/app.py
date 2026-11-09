@@ -5,6 +5,7 @@ import threading
 import shutil
 import uuid
 from flask import Flask, render_template, request, jsonify
+from serial.tools import list_ports
 from main import AutoPen, convert_svg_to_gcode_vpype, execute_raw_gcode_from_file
 
 app = Flask(__name__)
@@ -121,6 +122,25 @@ def api_status():
         "stop_requested": stop_event.is_set(),
         "pen": pen_state,
     })
+
+
+@app.route("/api/devices")
+def api_devices():
+    """Return serial devices currently recognized by the host."""
+    try:
+        devices = []
+        for port in sorted(list_ports.comports(), key=lambda item: item.device):
+            label = port.description or "Unknown device"
+            if port.manufacturer and port.manufacturer not in label:
+                label = f"{label} ({port.manufacturer})"
+            devices.append({
+                "device": port.device,
+                "label": label,
+                "hwid": port.hwid,
+            })
+        return jsonify({"ok": True, "devices": devices})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e), "devices": []}), 500
 
 
 @app.route("/api/connect", methods=["POST"])

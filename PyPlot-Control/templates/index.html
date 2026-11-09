@@ -252,7 +252,10 @@
       </div>
       <div style="margin-top:8px;display:flex;gap:6px;align-items:center;">
         <label style="font-size:12px;color:var(--text-dim);">Device:</label>
-        <input type="text" id="deviceInput" value="/dev/cu.usbmodem201912341" style="flex:1;padding:4px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
+        <select id="deviceSelect" style="flex:1;padding:4px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
+          <option value="">Detecting USB devices...</option>
+        </select>
+        <button class="btn btn-sm" id="refreshDevicesBtn" title="Refresh USB devices">Refresh</button>
       </div>
     </div>
 
@@ -330,7 +333,8 @@ const resumeBtn      = $("resumeBtn");
 const stopBtn        = $("stopBtn");
 const penUpBtn       = $("penUpBtn");
 const penDownBtn     = $("penDownBtn");
-const deviceInput    = $("deviceInput");
+const deviceSelect   = $("deviceSelect");
+const refreshDevicesBtn = $("refreshDevicesBtn");
 const penHeightInput = $("penHeightInput");
 const setPenHeightBtn = $("setPenHeightBtn");
 const svgUpload      = $("svgUpload");
@@ -609,6 +613,8 @@ function updateUI() {
   // buttons
   connectBtn.disabled     = conn;
   disconnectBtn.disabled  = !conn || plot;
+  deviceSelect.disabled   = conn;
+  refreshDevicesBtn.disabled = conn;
   startBtn.disabled       = !conn || plot;
   pauseBtn.disabled       = !conn || !plot || pause;
   resumeBtn.disabled      = !conn || !plot || !pause;
@@ -619,15 +625,40 @@ function updateUI() {
   machineProfile.disabled = plot;
 }
 
+async function loadDevices() {
+  try {
+    const data = await api("GET", "/api/devices");
+    const selected = deviceSelect.value;
+    deviceSelect.innerHTML = "";
+
+    if (!data.ok || !data.devices.length) {
+      deviceSelect.add(new Option("No USB serial devices found", ""));
+      return;
+    }
+
+    data.devices.forEach(({ device, label }) => {
+      deviceSelect.add(new Option(`${device} — ${label}`, device));
+    });
+    if (data.devices.some(item => item.device === selected)) {
+      deviceSelect.value = selected;
+    }
+  } catch (_) {
+    deviceSelect.innerHTML = "";
+    deviceSelect.add(new Option("Unable to detect USB devices", ""));
+  }
+}
+
 // ============================================================
 //  event handlers
 // ============================================================
 connectBtn.addEventListener("click", async () => {
-  const device = deviceInput.value.trim() || null;
+  const device = deviceSelect.value || null;
   const res = await api("POST", "/api/connect", { device });
   if (!res.ok) { alert("Connect failed: " + (res.error || "unknown")); }
   await pollStatus();
 });
+
+refreshDevicesBtn.addEventListener("click", loadDevices);
 
 disconnectBtn.addEventListener("click", async () => {
   const res = await api("POST", "/api/disconnect");
@@ -718,6 +749,7 @@ $("homeBtn").addEventListener("click", async () => {
 //  polling
 // ============================================================
 setInterval(pollStatus, 1000);
+loadDevices();
 pollStatus();
 </script>
 
