@@ -28,6 +28,10 @@ Set separate **Pen-up speed** and **Pen-down speed** values in mm/min (up to
 `5000`). The selected speed is applied to each movement, so changes take
 effect without reconnecting.
 
+Nearby drawing points are combined by default using a `2 mm` minimum spacing.
+Increase **Minimum point spacing** if the plotter is still receiving too many
+commands; decrease it for more detail.
+
 For an SSH tunnel, run `ssh -L 5002:localhost:5002 <user>@<raspberry-pi-ip>`
 and then open `http://127.0.0.1:5002` locally.
 
