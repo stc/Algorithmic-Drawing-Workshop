@@ -35,7 +35,8 @@
     <aside>
       <section class="card"><h2>Connection</h2>
         <label for="device">Serial device</label><div class="row"><select id="device" style="flex:1"><option value="">Loading devices...</option></select><button id="refresh-devices" type="button" title="Refresh serial devices">Refresh</button></div>
-        <label for="speed">Speed (mm/min)</label><input id="speed" type="number" min="50" max="2500" value="2000">
+         <label for="pen-up-speed">Pen-up speed (mm/min)</label><input id="pen-up-speed" type="number" min="50" max="2500" value="2000">
+         <label for="pen-down-speed">Pen-down speed (mm/min)</label><input id="pen-down-speed" type="number" min="50" max="2500" value="1000">
         <div class="row" style="margin-top:14px"><button class="primary" id="connect">Connect</button><button id="disconnect" disabled>Disconnect</button></div>
       </section>
       <section class="card"><h2>Plotter</h2><div class="readout"><div>BED WIDTH<strong>{{ bed_width }} mm</strong></div><div>BED HEIGHT<strong>{{ bed_height }} mm</strong></div><div>PEN<strong id="pen">up</strong></div><div>POINTER<strong id="pointer">idle</strong></div></div></section>
@@ -71,12 +72,12 @@
     }
     function setConnected(value) { connected = value; statusEl.classList.toggle('connected', value); statusEl.lastChild.textContent = value ? 'Connected' : 'Disconnected'; connectBtn.disabled = value; disconnectBtn.disabled = !value; penDownBtn.disabled = !value; liftBtn.disabled = !value; homeBtn.disabled = !value; deviceSelect.disabled = value; }
     function point(event) { const r = canvas.getBoundingClientRect(); const x = Math.max(0, Math.min(1, (event.clientX-r.left)/r.width)); const y = Math.max(0, Math.min(1, (event.clientY-r.top)/r.height)); return {x:x*{{ bed_width }}, y:(1-y)*{{ bed_height }}, screenX:x*canvas.width, screenY:y*canvas.height}; }
-    function send(pointData, penDown) { requestChain = requestChain.then(() => api('/api/draw', {x:pointData.x, y:pointData.y, pen_down:penDown})).then(data => { penEl.textContent=data.pen; }).catch(err => { pointerEl.textContent=err.message; }); return requestChain; }
+    function send(pointData, penDown) { requestChain = requestChain.then(() => api('/api/draw', {x:pointData.x, y:pointData.y, pen_down:penDown, pen_up_speed:Number(document.querySelector('#pen-up-speed').value), pen_down_speed:Number(document.querySelector('#pen-down-speed').value)})).then(data => { penEl.textContent=data.pen; }).catch(err => { pointerEl.textContent=err.message; }); return requestChain; }
     canvas.addEventListener('pointerdown', event => { if (!connected) { pointerEl.textContent='connect first'; return; } event.preventDefault(); canvas.setPointerCapture(event.pointerId); drawing=true; pointerEl.textContent='drawing'; const p=point(event); ctx.beginPath(); ctx.moveTo(p.screenX,p.screenY); send(p,false); });
     canvas.addEventListener('pointermove', event => { const p=point(event); document.querySelector('#coords').textContent=`${p.x.toFixed(1)}, ${p.y.toFixed(1)} mm`; if (!drawing) return; event.preventDefault(); ctx.lineTo(p.screenX,p.screenY); ctx.stroke(); send(p,true); });
     async function release(event) { if (!drawing) return; drawing=false; pointerEl.textContent='idle'; if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId); requestChain=requestChain.then(() => api('/api/pen-up')).then(() => penEl.textContent='up').catch(err => pointerEl.textContent=err.message); }
     canvas.addEventListener('pointerup', release); canvas.addEventListener('pointercancel', release); canvas.addEventListener('lostpointercapture', () => { if (drawing) { drawing=false; api('/api/pen-up').catch(()=>{}); } });
-    connectBtn.onclick = async () => { try { const device = deviceSelect.value; if (!device) throw new Error('Select a serial device first'); await api('/api/connect', {device, speed:Number(document.querySelector('#speed').value)}); setConnected(true); deviceSelect.disabled=true; } catch(e) { alert(e.message); } };
+    connectBtn.onclick = async () => { try { const device = deviceSelect.value; if (!device) throw new Error('Select a serial device first'); await api('/api/connect', {device, pen_up_speed:Number(document.querySelector('#pen-up-speed').value)}); setConnected(true); deviceSelect.disabled=true; } catch(e) { alert(e.message); } };
     disconnectBtn.onclick = async () => { try { await api('/api/disconnect'); setConnected(false); penEl.textContent='up'; } catch(e) { alert(e.message); } };
     liftBtn.onclick = async () => { try { await api('/api/pen-up'); penEl.textContent='up'; } catch(e) { alert(e.message); } };
     penDownBtn.onclick = async () => { try { await api('/api/pen-down'); penEl.textContent='down'; } catch(e) { alert(e.message); } };

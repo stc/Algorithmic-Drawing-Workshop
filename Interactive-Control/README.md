@@ -24,6 +24,10 @@ after plugging in the plotter, then select it before connecting.
 Use **Pen down** and **Pen up** in the Safety panel to set the pen height
 manually.
 
+Set separate **Pen-up speed** and **Pen-down speed** values in mm/min. The
+selected speed is applied to each movement, so changes take effect without
+reconnecting.
+
 For an SSH tunnel, run `ssh -L 5002:localhost:5002 <user>@<raspberry-pi-ip>`
 and then open `http://127.0.0.1:5002` locally.
 

@@ -17,7 +17,8 @@ app = Flask(__name__)
 BED_WIDTH_MM = 700.0
 BED_HEIGHT_MM = 1000.0
 PEN_DOWN_HEIGHT = 9.0
-DEFAULT_SPEED = 2000.0
+DEFAULT_PEN_UP_SPEED = 2000.0
+DEFAULT_PEN_DOWN_SPEED = 1000.0
 
 pen = None
 pen_lock = threading.RLock()
@@ -89,8 +90,10 @@ def connect():
     data = request.get_json(silent=True) or {}
     device = (data.get("device") or "").strip() or None
     try:
-        speed = clamp(data.get("speed", DEFAULT_SPEED), 50, 2500)
-        new_pen = AutoPen(device_location=device, default_speed=speed)
+        pen_up_speed = clamp(
+            data.get("pen_up_speed", DEFAULT_PEN_UP_SPEED), 50, 2500
+        )
+        new_pen = AutoPen(device_location=device, default_speed=pen_up_speed)
     except Exception as exc:
         return error(str(exc), 500)
 
@@ -128,13 +131,21 @@ def draw():
         x = clamp(data["x"], 0, BED_WIDTH_MM)
         y = clamp(data["y"], 0, BED_HEIGHT_MM)
         pen_down = bool(data.get("pen_down", True))
+        speed = clamp(
+            data.get(
+                "pen_down_speed" if pen_down else "pen_up_speed",
+                DEFAULT_PEN_DOWN_SPEED if pen_down else DEFAULT_PEN_UP_SPEED,
+            ),
+            50,
+            2500,
+        )
     except (KeyError, TypeError, ValueError):
         return error("x and y must be numeric")
 
     try:
         with draw_lock:
             current.set_pen_height(PEN_DOWN_HEIGHT if pen_down else 0)
-            current.move_xy_variable_speed(x, y)
+            current.move_xy_variable_speed(x, y, speed=speed)
     except Exception as exc:
         return error(str(exc), 500)
     return jsonify({"ok": True, "x": x, "y": y, "pen": "down" if pen_down else "up"})
