@@ -4,6 +4,7 @@ import threading
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request
+from serial.tools import list_ports
 
 # Reuse the serial protocol already used by PyPlot-Control.
 PYPLOT_DIR = Path(__file__).resolve().parent.parent / "PyPlot-Control"
@@ -63,6 +64,20 @@ def status():
         with current.state_lock:
             pen_state = "down" if current.current_z else "up"
     return jsonify({"connected": current is not None, "pen": pen_state})
+
+
+@app.get("/api/serial-ports")
+def serial_ports():
+    """Return the serial devices currently attached to the Raspberry Pi."""
+    ports = [
+        {
+            "device": port.device,
+            "description": port.description or "Unknown device",
+            "hwid": port.hwid,
+        }
+        for port in sorted(list_ports.comports(), key=lambda item: item.device)
+    ]
+    return jsonify({"ports": ports})
 
 
 @app.post("/api/connect")
@@ -169,5 +184,7 @@ atexit.register(shutdown)
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 5002
-    print(f"Interactive Plotter at http://127.0.0.1:{port}")
-    app.run(host="127.0.0.1", port=port, debug=True, use_reloader=False)
+    # Bind to all interfaces so the UI can be opened using the Raspberry Pi's
+    # LAN address (or through an SSH tunnel) from another device.
+    print(f"Interactive Plotter at http://0.0.0.0:{port}")
+    app.run(host="0.0.0.0", port=port, debug=True, use_reloader=False)

@@ -13,7 +13,16 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Open `http://127.0.0.1:5002`. Set the serial device before connecting. The default bed is 700 x 1000 mm; change `BED_WIDTH_MM` and `BED_HEIGHT_MM` in `app.py` for another machine.
+Open `http://<raspberry-pi-ip>:5002` from another device, or
+`http://127.0.0.1:5002` on the Pi itself. Set the serial device before
+connecting. The default bed is 700 x 1000 mm; change `BED_WIDTH_MM` and
+`BED_HEIGHT_MM` in `app.py` for another machine.
+
+The Connection panel lists attached USB serial devices. Click **Refresh**
+after plugging in the plotter, then select it before connecting.
+
+For an SSH tunnel, run `ssh -L 5002:localhost:5002 <user>@<raspberry-pi-ip>`
+and then open `http://127.0.0.1:5002` locally.
 
 Restart `python app.py` after updating the project so the `/api/home` route is loaded.
 
