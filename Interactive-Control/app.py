@@ -153,6 +153,19 @@ def pen_up():
     return jsonify({"ok": True, "pen": "up"})
 
 
+@app.post("/api/pen-down")
+def pen_down():
+    current = get_pen()
+    if current is None:
+        return error("Not connected")
+    try:
+        with draw_lock:
+            current.set_pen_height(PEN_DOWN_HEIGHT)
+    except Exception as exc:
+        return error(str(exc), 500)
+    return jsonify({"ok": True, "pen": "down"})
+
+
 @app.post("/api/home")
 def home():
     current = get_pen()

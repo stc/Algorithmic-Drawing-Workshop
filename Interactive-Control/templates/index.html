@@ -39,13 +39,13 @@
         <div class="row" style="margin-top:14px"><button class="primary" id="connect">Connect</button><button id="disconnect" disabled>Disconnect</button></div>
       </section>
       <section class="card"><h2>Plotter</h2><div class="readout"><div>BED WIDTH<strong>{{ bed_width }} mm</strong></div><div>BED HEIGHT<strong>{{ bed_height }} mm</strong></div><div>PEN<strong id="pen">up</strong></div><div>POINTER<strong id="pointer">idle</strong></div></div></section>
-      <section class="card"><h2>Safety</h2><div class="row"><button id="lift" disabled>Lift pen</button><button id="home" disabled>Home</button></div><button id="clear" style="margin-top:8px">Clear preview</button></section>
+       <section class="card"><h2>Safety</h2><div class="row"><button id="pen-down" disabled>Pen down</button><button id="lift" disabled>Pen up</button><button id="home" disabled>Home</button></div><button id="clear" style="margin-top:8px">Clear preview</button></section>
     </aside>
   </main>
   <script>
     const canvas = document.querySelector('#canvas'), ctx = canvas.getContext('2d');
     const statusEl = document.querySelector('#status'), penEl = document.querySelector('#pen'), pointerEl = document.querySelector('#pointer');
-    const connectBtn = document.querySelector('#connect'), disconnectBtn = document.querySelector('#disconnect'), liftBtn = document.querySelector('#lift'), homeBtn = document.querySelector('#home');
+    const connectBtn = document.querySelector('#connect'), disconnectBtn = document.querySelector('#disconnect'), penDownBtn = document.querySelector('#pen-down'), liftBtn = document.querySelector('#lift'), homeBtn = document.querySelector('#home');
     let connected = false, drawing = false, requestChain = Promise.resolve();
     ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = '#182022';
     const api = (path, body) => fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body || {})}).then(async r => { const text = await r.text(); let data; try { data = JSON.parse(text); } catch (_) { throw new Error(`HTTP ${r.status} from ${path}; restart the Flask server`); } if (!r.ok || !data.ok) throw new Error(data.error || `HTTP ${r.status}`); return data; });
@@ -69,7 +69,7 @@
         deviceSelect.disabled = connected;
       }
     }
-    function setConnected(value) { connected = value; statusEl.classList.toggle('connected', value); statusEl.lastChild.textContent = value ? 'Connected' : 'Disconnected'; connectBtn.disabled = value; disconnectBtn.disabled = !value; liftBtn.disabled = !value; homeBtn.disabled = !value; deviceSelect.disabled = value; }
+    function setConnected(value) { connected = value; statusEl.classList.toggle('connected', value); statusEl.lastChild.textContent = value ? 'Connected' : 'Disconnected'; connectBtn.disabled = value; disconnectBtn.disabled = !value; penDownBtn.disabled = !value; liftBtn.disabled = !value; homeBtn.disabled = !value; deviceSelect.disabled = value; }
     function point(event) { const r = canvas.getBoundingClientRect(); const x = Math.max(0, Math.min(1, (event.clientX-r.left)/r.width)); const y = Math.max(0, Math.min(1, (event.clientY-r.top)/r.height)); return {x:x*{{ bed_width }}, y:(1-y)*{{ bed_height }}, screenX:x*canvas.width, screenY:y*canvas.height}; }
     function send(pointData, penDown) { requestChain = requestChain.then(() => api('/api/draw', {x:pointData.x, y:pointData.y, pen_down:penDown})).then(data => { penEl.textContent=data.pen; }).catch(err => { pointerEl.textContent=err.message; }); return requestChain; }
     canvas.addEventListener('pointerdown', event => { if (!connected) { pointerEl.textContent='connect first'; return; } event.preventDefault(); canvas.setPointerCapture(event.pointerId); drawing=true; pointerEl.textContent='drawing'; const p=point(event); ctx.beginPath(); ctx.moveTo(p.screenX,p.screenY); send(p,false); });
@@ -79,6 +79,7 @@
     connectBtn.onclick = async () => { try { const device = deviceSelect.value; if (!device) throw new Error('Select a serial device first'); await api('/api/connect', {device, speed:Number(document.querySelector('#speed').value)}); setConnected(true); deviceSelect.disabled=true; } catch(e) { alert(e.message); } };
     disconnectBtn.onclick = async () => { try { await api('/api/disconnect'); setConnected(false); penEl.textContent='up'; } catch(e) { alert(e.message); } };
     liftBtn.onclick = async () => { try { await api('/api/pen-up'); penEl.textContent='up'; } catch(e) { alert(e.message); } };
+    penDownBtn.onclick = async () => { try { await api('/api/pen-down'); penEl.textContent='down'; } catch(e) { alert(e.message); } };
     homeBtn.onclick = () => { if (drawing) { pointerEl.textContent='release the pointer first'; return; } requestChain=requestChain.then(() => api('/api/home')).then(data => { penEl.textContent=data.pen; pointerEl.textContent='home'; }).catch(err => pointerEl.textContent=err.message); };
     document.querySelector('#clear').onclick = () => ctx.clearRect(0,0,canvas.width,canvas.height);
     document.querySelector('#refresh-devices').onclick = loadDevices;

@@ -21,6 +21,9 @@ connecting. The default bed is 700 x 1000 mm; change `BED_WIDTH_MM` and
 The Connection panel lists attached USB serial devices. Click **Refresh**
 after plugging in the plotter, then select it before connecting.
 
+Use **Pen down** and **Pen up** in the Safety panel to set the pen height
+manually.
+
 For an SSH tunnel, run `ssh -L 5002:localhost:5002 <user>@<raspberry-pi-ip>`
 and then open `http://127.0.0.1:5002` locally.
 
