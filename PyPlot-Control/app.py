@@ -366,5 +366,7 @@ def api_home():
 
 if __name__ == "__main__":
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 3000
-    print(f"Starting PlotPy-Control Web UI at http://127.0.0.1:{port}")
-    app.run(host="127.0.0.1", port=port, debug=True, use_reloader=False)
+    # Bind to all interfaces so the UI can be opened using the Pi's LAN
+    # address from another device (while remaining available on localhost).
+    print(f"Starting PlotPy-Control Web UI on port {port}")
+    app.run(host="0.0.0.0", port=port, debug=True, use_reloader=False)
