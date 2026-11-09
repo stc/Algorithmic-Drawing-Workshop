@@ -25,7 +25,7 @@ Use **Pen down** and **Pen up** in the Safety panel to set the pen height
 manually.
 
 Set separate **Pen-up speed** and **Pen-down speed** values in mm/min (up to
-`5000`). The selected speed is applied to each movement, so changes take
+`8000`). The selected speed is applied to each movement, so changes take
 effect without reconnecting.
 
 Nearby drawing points are combined by default using a `2 mm` minimum spacing.

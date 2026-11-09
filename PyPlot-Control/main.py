@@ -127,7 +127,7 @@ class AutoPen():
 
     def set_speed(self,speed:float) -> None:
         assert speed >= 50 
-        assert speed <= 5000
+        assert speed <= 8000
         self.send_gcode(f"F{speed}")
 
     def move_xy_constant_speed(self,x:float,y:float) -> None:
