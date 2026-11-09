@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PyPlot-Control</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #111;
+    --surface: #1a1a1a;
+    --surface2: #252525;
+    --border: #333;
+    --text: #ddd;
+    --text-dim: #888;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --red: #f85149;
+    --yellow: #d29922;
+    --radius: 8px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header h1 { font-size: 18px; font-weight: 600; }
+  header span { color: var(--text-dim); font-size: 13px; }
+
+  .status-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--red); display: inline-block;
+    transition: background .2s;
+  }
+  .status-dot.connected { background: var(--green); }
+
+  .container {
+    display: flex;
+    flex: 1;
+    padding: 16px;
+    gap: 16px;
+    min-height: 0;
+  }
+
+  /* ---- canvas panel ---- */
+  .canvas-panel {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .canvas-toolbar {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .canvas-toolbar label { font-size: 13px; color: var(--text-dim); }
+
+  .canvas-wrap {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    min-height: 600px;
+  }
+  .canvas-wrap svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    cursor: grab;
+  }
+  .canvas-wrap svg:active { cursor: grabbing; }
+
+  .bed-rect { fill: none; stroke: #ccc; stroke-width: 1; }
+  .drag-svg { cursor: grab; }
+  .drag-svg:active { cursor: grabbing; }
+
+  .hint {
+    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    font-size: 12px; color: #999; background: rgba(0,0,0,.6); padding: 4px 12px;
+    border-radius: 4px; pointer-events: none;
+  }
+
+  /* ---- control panel ---- */
+  .control-panel {
+    width: 280px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+  }
+  .card h2 { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .5px; }
+
+  .btn-group { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .btn {
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .btn:hover { background: #333; }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+  .btn-primary { border-color: var(--accent); color: var(--accent); }
+  .btn-primary:hover { background: var(--accent); color: #fff; }
+
+  .btn-danger { border-color: var(--red); color: var(--red); }
+  .btn-danger:hover { background: var(--red); color: #fff; }
+
+  .btn-warning { border-color: var(--yellow); color: var(--yellow); }
+  .btn-warning:hover { background: var(--yellow); color: #fff; }
+
+  .btn-success { border-color: var(--green); color: var(--green); }
+  .btn-success:hover { background: var(--green); color: #fff; }
+
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+  .upload-btn-wrap { position: relative; overflow: hidden; display: inline-block; }
+  .upload-btn-wrap input[type=file] {
+    position: absolute; left: 0; top: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer;
+  }
+
+  .status-row {
+    display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 6px;
+  }
+  .status-row:last-child { margin-bottom: 0; }
+  .status-label { color: var(--text-dim); min-width: 70px; }
+  .status-value { font-weight: 500; }
+
+  .pos-inputs { display: flex; gap: 8px; align-items: center; }
+  .pos-inputs label { font-size: 12px; color: var(--text-dim); }
+  .pos-inputs input[type=number] {
+    width: 70px; padding: 4px 6px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 12px;
+  }
+
+  .select-input {
+    padding: 5px 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: 12px;
+  }
+
+  .file-name { font-size: 12px; color: var(--text-dim); margin-top: 6px; word-break: break-all; }
+
+  @media (max-width: 800px) {
+    .container { flex-direction: column; }
+    .control-panel { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="status-dot" id="statusDot"></span>
+  <h1>PyPlot-Control</h1>
+  <span id="statusText">Disconnected</span>
+</header>
+
+<div class="container">
+
+  <!-- canvas -->
+  <div class="canvas-panel">
+    <div class="canvas-toolbar">
+      <label for="paperSize">Drawing area:</label>
+      <select id="paperSize" class="select-input">
+        <option value="A0">A0 (841 × 1189 mm)</option>
+        <option value="A1">A1 (594 × 841 mm)</option>
+        <option value="A2">A2 (420 × 594 mm)</option>
+        <option value="A3">A3 (297 × 420 mm)</option>
+        <option value="A4">A4 (210 × 297 mm)</option>
+        <option value="A5">A5 (148 × 210 mm)</option>
+      </select>
+      <label for="machineProfile">Machine:</label>
+      <select id="machineProfile" class="select-input">
+        <option value="idrawv2">iDraw (origin bottom-left)</option>
+        <option value="bachin">Bachin Draw (origin top-left)</option>
+      </select>
+      <label>Offset:</label>
+      <div class="pos-inputs">
+        <label>X</label><input type="number" id="offsetX" value="20" step="1">
+        <label>Y</label><input type="number" id="offsetY" value="20" step="1">
+      </div>
+      <span style="flex:1"></span>
+      <div class="upload-btn-wrap">
+        <button class="btn btn-sm">Upload SVG</button>
+        <input type="file" id="svgUpload" accept=".svg">
+      </div>
+      <button class="btn btn-sm" id="resetViewBtn">Reset View</button>
+    </div>
+    <div class="canvas-wrap" id="canvasWrap">
+      <svg id="mainSvg" viewBox="0 0 841 1189" preserveAspectRatio="xMidYMid meet">
+        <rect class="bed-rect" x="10" y="10" width="821" height="1169" rx="4"/>
+        <g id="draggableSvg" transform="translate(20,20)">
+          <g id="svgScaleGroup" transform="scale(1)">
+            <rect x="0" y="0" width="800" height="1000" fill="none" stroke="#333" stroke-width="4" rx="8"/>
+            <circle cx="400" cy="500" r="200" fill="none" stroke="#555" stroke-width="3"/>
+            <line x1="0" y1="0" x2="800" y2="1000" stroke="#777" stroke-width="1.5" stroke-dasharray="10,10"/>
+            <line x1="800" y1="0" x2="0" y2="1000" stroke="#777" stroke-width="1.5" stroke-dasharray="10,10"/>
+          </g>
+        </g>
+      </svg>
+      <div class="hint">Drag the SVG to position it on the virtual bed</div>
+    </div>
+  </div>
+
+  <!-- controls -->
+  <div class="control-panel">
+
+    <div class="card">
+      <h2>Connection</h2>
+      <div class="btn-group">
+        <button class="btn btn-sm" id="connectBtn">Connect</button>
+        <button class="btn btn-sm" id="disconnectBtn" disabled>Disconnect</button>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:6px;align-items:center;">
+        <label style="font-size:12px;color:var(--text-dim);">Device:</label>
+        <input type="text" id="deviceInput" value="/dev/cu.usbmodem201912341" style="flex:1;padding:4px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Plot Controls</h2>
+      <div class="btn-group">
+        <button class="btn btn-sm btn-success" id="startBtn" disabled>Start Plot</button>
+        <button class="btn btn-sm btn-warning" id="pauseBtn" disabled>Pause</button>
+        <button class="btn btn-sm btn-primary" id="resumeBtn" disabled>Resume</button>
+        <button class="btn btn-sm btn-danger" id="stopBtn" disabled>Stop</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Pen Controls</h2>
+      <div class="btn-group">
+        <button class="btn btn-sm" id="penUpBtn" disabled>Pen Up</button>
+        <button class="btn btn-sm" id="penDownBtn" disabled>Pen Down</button>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:6px;align-items:center;">
+        <label style="font-size:12px;color:var(--text-dim);">Pen height (0-9):</label>
+        <input type="number" id="penHeightInput" value="9" min="0" max="9" style="width:60px;padding:4px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12px;">
+        <button class="btn btn-sm" id="setPenHeightBtn">Set</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Manual Move</h2>
+      <div class="pos-inputs" style="margin-bottom:6px;">
+        <label>X</label><input type="number" id="moveX" value="10" step="10">
+        <label>Y</label><input type="number" id="moveY" value="10" step="10">
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-sm" id="movePlusX">+X</button>
+        <button class="btn btn-sm" id="moveMinusX">-X</button>
+        <button class="btn btn-sm" id="movePlusY">+Y</button>
+        <button class="btn btn-sm" id="moveMinusY">-Y</button>
+      </div>
+      <div class="btn-group" style="margin-top:6px;">
+        <button class="btn btn-sm" id="homeBtn">Home (0,0)</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Status</h2>
+      <div class="status-row"><span class="status-label">Connection</span><span class="status-value" id="sConnection">Disconnected</span></div>
+      <div class="status-row"><span class="status-label">Plotting</span><span class="status-value" id="sPlotting">Idle</span></div>
+      <div class="status-row"><span class="status-label">Pen</span><span class="status-value" id="sPen">—</span></div>
+      <div class="status-row"><span class="status-label">File</span><span class="status-value" id="sFile">—</span></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  state
+// ============================================================
+const state = {
+  connected: false,
+  plotting: false,
+  paused: false,
+  pendingStatus: null,
+};
+
+const $ = id => document.getElementById(id);
+
+const statusDot      = $("statusDot");
+const statusText     = $("statusText");
+const connectBtn     = $("connectBtn");
+const disconnectBtn  = $("disconnectBtn");
+const startBtn       = $("startBtn");
+const pauseBtn       = $("pauseBtn");
+const resumeBtn      = $("resumeBtn");
+const stopBtn        = $("stopBtn");
+const penUpBtn       = $("penUpBtn");
+const penDownBtn     = $("penDownBtn");
+const deviceInput    = $("deviceInput");
+const penHeightInput = $("penHeightInput");
+const setPenHeightBtn = $("setPenHeightBtn");
+const svgUpload      = $("svgUpload");
+const resetViewBtn   = $("resetViewBtn");
+const paperSize      = $("paperSize");
+const machineProfile = $("machineProfile");
+const offsetX        = $("offsetX");
+const offsetY        = $("offsetY");
+const sConnection    = $("sConnection");
+const sPlotting      = $("sPlotting");
+const sPen           = $("sPen");
+const sFile          = $("sFile");
+const moveX          = $("moveX");
+const moveY          = $("moveY");
+
+// ============================================================
+//  SVG state — display vs native
+// ============================================================
+const mainSvg         = $("mainSvg");
+const draggableSvg    = $("draggableSvg");
+const svgScaleGroup   = $("svgScaleGroup");
+
+const PAPER_SIZES = {
+  A0: { w: 841, h: 1189 },
+  A1: { w: 594, h: 841 },
+  A2: { w: 420, h: 594 },
+  A3: { w: 297, h: 420 },
+  A4: { w: 210, h: 297 },
+  A5: { w: 148, h: 210 },
+};
+let BED = { x: 10, y: 10, w: 821, h: 1169 };
+
+// SVG for plotting (always has width/height in mm)
+let plotSvgText = null;
+// display-only extracted data
+let displayContent = null;
+let displayViewBox = "0 0 841 1189";
+let displayW = 841, displayH = 1189;
+
+// ============================================================
+//  SVG geometry helpers
+// ============================================================
+function getSvgPoint(svg, clientX, clientY) {
+  const pt = svg.createSVGPoint();
+  pt.x = clientX;
+  pt.y = clientY;
+  return pt.matrixTransform(svg.getScreenCTM().inverse());
+}
+
+function parseSvgDims(svgEl) {
+  const vb = svgEl.getAttribute("viewBox");
+  if (vb) {
+    const p = vb.trim().split(/[ ,\t]+/).map(Number);
+    if (p.length >= 4) return { w: p[2], h: p[3], viewBox: vb };
+  }
+  const w = parseFloat(svgEl.getAttribute("width"));
+  const h = parseFloat(svgEl.getAttribute("height"));
+  if (w && h) return { w, h, viewBox: `0 0 ${w} ${h}` };
+  return null;
+}
+
+// ensure SVG width/height have mm units for vpype
+function svgWithMmUnits(svgEl) {
+  const raw = new XMLSerializer().serializeToString(svgEl);
+  let w = svgEl.getAttribute("width");
+  let h = svgEl.getAttribute("height");
+  const vb = svgEl.getAttribute("viewBox");
+  const vbParts = vb ? vb.trim().split(/[ ,\t]+/).map(Number) : null;
+
+  // helper: extract numeric value and convert to mm
+  const toMm = (val, fallback) => {
+    if (!val) return fallback != null ? fallback : null;
+    const m = val.match(/^([\d.]+)\s*(mm|cm|in|pt|px)?$/);
+    if (!m) return fallback;
+    const num = parseFloat(m[1]);
+    const unit = m[2] || "";
+    if (unit === "mm") return num;
+    if (unit === "cm") return num * 10;
+    if (unit === "in") return num * 25.4;
+    if (unit === "pt") return num * 0.3528;
+    // px or bare number: assume 96 DPI
+    return num * 25.4 / 96;
+  };
+  const fallbackW = vbParts && vbParts.length >= 4 ? vbParts[2] : 841;
+  const fallbackH = vbParts && vbParts.length >= 4 ? vbParts[3] : 1189;
+  const mmW = toMm(w, fallbackW);
+  const mmH = toMm(h, fallbackH);
+
+  // rebuild with explicit mm
+  const inner = svgEl.innerHTML;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${vb || "0 0 841 1189"}" width="${mmW}mm" height="${mmH}mm">
+${inner}
+</svg>`;
+}
+
+function fitToBed(contentW, contentH, padding = 0.85) {
+  const scale = Math.min((BED.w * padding) / contentW, (BED.h * padding) / contentH);
+  return {
+    scale,
+    tx: BED.x + (BED.w - contentW * scale) / 2,
+    ty: BED.y + (BED.h - contentH * scale) / 2,
+  };
+}
+
+// display only — scales content to fit bed visually
+// plotSvg* vars store native data for actual plotting
+function displaySvgInBed(contentHTML, origW, origH) {
+  svgScaleGroup.innerHTML = contentHTML;
+  if (origW && origH) {
+    const f = fitToBed(origW, origH);
+    svgScaleGroup.setAttribute("transform", `scale(${f.scale})`);
+    draggableSvg.setAttribute("transform", `translate(${f.tx},${f.ty})`);
+    offsetX.value = Math.round(f.tx);
+    offsetY.value = Math.round(f.ty);
+  } else {
+    svgScaleGroup.setAttribute("transform", "scale(1)");
+    draggableSvg.setAttribute("transform", "translate(20,20)");
+    offsetX.value = 20;
+    offsetY.value = 20;
+  }
+}
+
+function setDrawingArea(sizeName, refit = true) {
+  const paper = PAPER_SIZES[sizeName] || PAPER_SIZES.A0;
+  BED = { x: 10, y: 10, w: paper.w - 20, h: paper.h - 20 };
+  mainSvg.setAttribute("viewBox", `0 0 ${paper.w} ${paper.h}`);
+  const bedRect = mainSvg.querySelector(".bed-rect");
+  bedRect.setAttribute("x", BED.x);
+  bedRect.setAttribute("y", BED.y);
+  bedRect.setAttribute("width", BED.w);
+  bedRect.setAttribute("height", BED.h);
+  if (refit && displayContent) {
+    displaySvgInBed(displayContent, displayW, displayH);
+  }
+}
+
+// ============================================================
+//  SVG drag (mouse + touch)
+// ============================================================
+let dragOffsetX = 0, dragOffsetY = 0, isDragging = false;
+
+function dragStart(clientX, clientY) {
+  isDragging = true;
+  const pt = getSvgPoint(mainSvg, clientX, clientY);
+  const ctm = draggableSvg.getCTM();
+  dragOffsetX = pt.x - ctm.e;
+  dragOffsetY = pt.y - ctm.f;
+}
+
+function dragMove(clientX, clientY) {
+  if (!isDragging) return;
+  const pt = getSvgPoint(mainSvg, clientX, clientY);
+  const tx = pt.x - dragOffsetX;
+  const ty = pt.y - dragOffsetY;
+  draggableSvg.setAttribute("transform", `translate(${tx},${ty})`);
+  offsetX.value = Math.round(tx);
+  offsetY.value = Math.round(ty);
+}
+
+function dragEnd() { isDragging = false; }
+
+// mouse
+mainSvg.addEventListener("mousedown", e => {
+  if (!e.target.closest("#draggableSvg")) return;
+  e.preventDefault();
+  dragStart(e.clientX, e.clientY);
+});
+window.addEventListener("mousemove", e => dragMove(e.clientX, e.clientY));
+window.addEventListener("mouseup", dragEnd);
+window.addEventListener("mouseleave", dragEnd);
+
+// touch
+mainSvg.addEventListener("touchstart", e => {
+  if (!e.target.closest("#draggableSvg")) return;
+  const t = e.touches[0];
+  dragStart(t.clientX, t.clientY);
+}, { passive: true });
+window.addEventListener("touchmove", e => {
+  const t = e.touches[0];
+  dragMove(t.clientX, t.clientY);
+}, { passive: true });
+window.addEventListener("touchend", dragEnd);
+
+// ============================================================
+//  SVG upload — generate mm-safe SVG for vpype, parse for display
+// ============================================================
+svgUpload.addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(ev.target.result, "image/svg+xml");
+    const svgEl = doc.querySelector("svg");
+    if (!svgEl) return;
+    plotSvgText = svgWithMmUnits(svgEl);
+    const dim = parseSvgDims(svgEl);
+    displayContent = svgEl.innerHTML;
+    displayViewBox = dim?.viewBox || "0 0 841 1189";
+    if (dim) { displayW = dim.w; displayH = dim.h; }
+    displaySvgInBed(displayContent, displayW, displayH);
+    sFile.textContent = file.name;
+  };
+  reader.readAsText(file);
+  svgUpload.value = "";
+});
+
+// ============================================================
+//  default SVG
+// ============================================================
+(function loadDefault() {
+  const inner = svgScaleGroup.innerHTML;
+  svgScaleGroup.innerHTML = "";
+  plotSvgText = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 841 1189" width="841mm" height="1189mm">
+<g>
+${inner}
+</g>
+</svg>`;
+  displayContent = inner;
+  displayViewBox = "0 0 841 1189";
+  displayW = 800; displayH = 1000;
+  displaySvgInBed(inner, displayW, displayH);
+})();
+
+resetViewBtn.addEventListener("click", () => {
+  displaySvgInBed(displayContent || svgScaleGroup.innerHTML, displayW, displayH);
+});
+
+  paperSize.addEventListener("change", () => {
+  setDrawingArea(paperSize.value);
+});
+
+// ============================================================
+//  API helpers
+// ============================================================
+async function api(method, path, body) {
+  const opts = { method, headers: {} };
+  if (body !== undefined) {
+    opts.headers["Content-Type"] = "application/json";
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(path, opts);
+  return res.json();
+}
+
+async function pollStatus() {
+  try {
+    const data = await api("GET", "/api/status");
+    state.connected = data.connected;
+    state.plotting  = data.plotting;
+    state.paused    = data.paused;
+    updateUI();
+    if (data.pen) {
+      sPen.textContent = data.pen;
+    }
+  } catch (_) {
+    // server down
+    state.connected = false;
+    state.plotting  = false;
+    state.paused    = false;
+    updateUI();
+  }
+}
+
+function updateUI() {
+  const conn = state.connected;
+  const plot = state.plotting;
+  const pause = state.paused;
+
+  // dot
+  statusDot.className = "status-dot" + (conn ? " connected" : "");
+  statusText.textContent = conn ? (plot ? (pause ? "Paused" : "Plotting") : "Connected") : "Disconnected";
+  sConnection.textContent = conn ? "Connected" : "Disconnected";
+  sPlotting.textContent = plot ? (pause ? "Paused" : "Active") : "Idle";
+
+  // buttons
+  connectBtn.disabled     = conn;
+  disconnectBtn.disabled  = !conn || plot;
+  startBtn.disabled       = !conn || plot;
+  pauseBtn.disabled       = !conn || !plot || pause;
+  resumeBtn.disabled      = !conn || !plot || !pause;
+  stopBtn.disabled        = !conn || !plot;
+  penUpBtn.disabled       = !conn || plot;
+  penDownBtn.disabled     = !conn || plot;
+  paperSize.disabled      = plot;
+  machineProfile.disabled = plot;
+}
+
+// ============================================================
+//  event handlers
+// ============================================================
+connectBtn.addEventListener("click", async () => {
+  const device = deviceInput.value.trim() || null;
+  const res = await api("POST", "/api/connect", { device });
+  if (!res.ok) { alert("Connect failed: " + (res.error || "unknown")); }
+  await pollStatus();
+});
+
+disconnectBtn.addEventListener("click", async () => {
+  const res = await api("POST", "/api/disconnect");
+  if (!res.ok) { alert("Disconnect failed: " + (res.error || "unknown")); }
+  await pollStatus();
+});
+
+startBtn.addEventListener("click", async () => {
+  const svgText = plotSvgText || `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 841 1189" width="841mm" height="1189mm">
+<g>
+${svgScaleGroup.innerHTML}
+</g>
+</svg>`;
+  const ox = parseFloat(offsetX.value) || 0;
+  const oy = parseFloat(offsetY.value) || 0;
+  const res = await api("POST", "/api/start", {
+    svg: svgText,
+    offset_x: ox,
+    offset_y: oy,
+    gcode_profile: machineProfile.value,
+  });
+  if (!res.ok) { alert("Start failed: " + (res.error || "unknown")); }
+  await pollStatus();
+});
+
+pauseBtn.addEventListener("click", async () => {
+  const res = await api("POST", "/api/pause");
+  if (!res.ok) { alert("Pause failed: " + (res.error || "unknown")); }
+  if (res.pen) sPen.textContent = res.pen;
+  await pollStatus();
+});
+
+resumeBtn.addEventListener("click", async () => {
+  const res = await api("POST", "/api/resume");
+  if (!res.ok) { alert("Resume failed: " + (res.error || "unknown")); }
+  if (res.pen) sPen.textContent = res.pen;
+  await pollStatus();
+});
+
+stopBtn.addEventListener("click", async () => {
+  const res = await api("POST", "/api/stop");
+  if (!res.ok) { alert("Stop failed: " + (res.error || "unknown")); }
+  await pollStatus();
+});
+
+penUpBtn.addEventListener("click", async () => {
+  const res = await api("POST", "/api/pen-up");
+  if (!res.ok) { alert("Pen up failed: " + (res.error || "unknown")); }
+  if (res.pen) sPen.textContent = res.pen;
+});
+
+penDownBtn.addEventListener("click", async () => {
+  const res = await api("POST", "/api/pen-down");
+  if (!res.ok) { alert("Pen down failed: " + (res.error || "unknown")); }
+  if (res.pen) sPen.textContent = res.pen;
+});
+
+setPenHeightBtn.addEventListener("click", async () => {
+  const h = parseFloat(penHeightInput.value);
+  if (isNaN(h) || h < 0 || h > 9) { alert("Height must be 0-9"); return; }
+  if (!state.connected) { alert("Not connected"); return; }
+  const res = await api("POST", "/api/pen-down", { height: h });
+  if (!res.ok) { alert("Failed to set pen height: " + (res.error || "unknown")); }
+  if (res.pen) sPen.textContent = res.pen;
+});
+
+// manual move
+async function doMove(dx, dy) {
+  if (!state.connected) { alert("Not connected"); return; }
+  const x = parseFloat(moveX.value) || 10;
+  const y = parseFloat(moveY.value) || 10;
+  const res = await api("POST", "/api/move", { x: dx*x, y: dy*y });
+  if (!res.ok) { alert("Move failed: " + (res.error || "unknown")); }
+}
+
+$("movePlusX") .addEventListener("click", () => doMove( 1,  0));
+$("moveMinusX").addEventListener("click", () => doMove(-1,  0));
+$("movePlusY") .addEventListener("click", () => doMove( 0,  1));
+$("moveMinusY").addEventListener("click", () => doMove( 0, -1));
+
+$("homeBtn").addEventListener("click", async () => {
+  if (!state.connected) { alert("Not connected"); return; }
+  const res = await api("POST", "/api/home", { gcode_profile: machineProfile.value });
+  if (!res.ok) { alert("Home failed: " + (res.error || "unknown")); }
+});
+
+// ============================================================
+//  polling
+// ============================================================
+setInterval(pollStatus, 1000);
+pollStatus();
+</script>
+
+</body>
+</html>
