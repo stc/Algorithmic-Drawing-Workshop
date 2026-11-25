@@ -4,7 +4,7 @@ document_start = """; (document_start)
 G21 ; Set Units to Millimeters
 G17 ; Set Plane Selection to XY
 G90 ; Set Absolute Positioning
-F3000  ; Set Speed
+F5000  ; Set Speed
 G00 Z0 ; pen up
 G00 X0 Y0 ; go to 0,0
 """
